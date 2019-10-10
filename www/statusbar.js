@@ -93,6 +93,14 @@ var StatusBar = {
     show: function () {
         exec(null, null, "StatusBar", "show", []);
         StatusBar.isVisible = true;
+    },
+
+    getInsets: function (success, error) {
+        exec(function (insets) { 
+            success(insets);
+         }, function (err) {
+            error(err);
+         }, "StatusBar", "getInsets", []);
     }
 
 };

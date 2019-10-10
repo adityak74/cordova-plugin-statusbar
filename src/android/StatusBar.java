@@ -22,8 +22,10 @@ package org.apache.cordova.statusbar;
 import android.app.Activity;
 import android.graphics.Color;
 import android.os.Build;
+import android.util.Log;
 import android.view.View;
 import android.view.Window;
+import android.view.WindowInsets;
 import android.view.WindowManager;
 
 import org.apache.cordova.CallbackContext;
@@ -34,10 +36,13 @@ import org.apache.cordova.CordovaWebView;
 import org.apache.cordova.LOG;
 import org.apache.cordova.PluginResult;
 import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.util.Arrays;
 
 public class StatusBar extends CordovaPlugin {
     private static final String TAG = "StatusBar";
+    private final JSONObject windowInsetsJSON = new JSONObject();
 
     /**
      * Sets the context of the Command. This can then be used to do things like
@@ -58,6 +63,26 @@ public class StatusBar extends CordovaPlugin {
                 // by the Cordova.
                 Window window = cordova.getActivity().getWindow();
                 window.clearFlags(WindowManager.LayoutParams.FLAG_FORCE_NOT_FULLSCREEN);
+
+                if (android.os.Build.VERSION.SDK_INT >= 20) {
+                    View rootView = window.getDecorView().getRootView();
+                    rootView.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
+                        @Override
+                        public WindowInsets onApplyWindowInsets(View view, WindowInsets windowInsets) {
+                            try {
+                                windowInsetsJSON.put("top", windowInsets.getSystemWindowInsetTop());
+                                windowInsetsJSON.put("bottom", windowInsets.getSystemWindowInsetBottom());
+                                windowInsetsJSON.put("left", windowInsets.getStableInsetLeft());
+                                windowInsetsJSON.put("right", windowInsets.getSystemWindowInsetRight());
+                            } catch (Exception ex) {
+                                Log.v(TAG, "Couldn't get insets");
+                            }
+                            return windowInsets;
+                        }
+                    });
+                } else {
+                    Log.v(TAG, "Couldn't get insets");
+                }
 
                 // Read 'StatusBarBackgroundColor' from config.xml, default is #000000.
                 setStatusBarBackgroundColor(preferences.getString("StatusBarBackgroundColor", "#000000"));
@@ -199,6 +224,15 @@ public class StatusBar extends CordovaPlugin {
                 public void run() {
                     setStatusBarStyle("blackopaque");
                 }
+            });
+            return true;
+        }
+
+        if ("getInsets".equals(action)) {
+            this.cordova.getActivity().runOnUiThread(() -> {
+                PluginResult result = new PluginResult(PluginResult.Status.OK, windowInsetsJSON);
+                result.setKeepCallback(true);
+                callbackContext.sendPluginResult(result);
             });
             return true;
         }
